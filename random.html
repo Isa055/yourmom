@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Random Art Generator</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #181818;
+      color: #eee;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+    header {
+      background: #2a2a2a;
+      padding: 1rem 2rem;
+      text-align: center;
+      font-size: 2.5rem;
+      letter-spacing: .1em;
+      box-shadow: 0 2px 10px #0008;
+    }
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+    #canvas-container {
+      background: #222;
+      border-radius: 1rem;
+      box-shadow: 0 0 24px #0007;
+      margin-bottom: 2rem;
+      overflow: hidden;
+      transition: box-shadow .3s;
+    }
+    canvas {
+      display: block;
+      background: #111;
+    }
+    .controls {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    button, select {
+      background: #333;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      padding: 0.7rem 1.2rem;
+      font-size: 1.1rem;
+      cursor: pointer;
+      transition: background .2s;
+    }
+    button:hover, select:hover {
+      background: #444;
+    }
+    footer {
+      text-align: center;
+      padding: 1rem;
+      font-size: 1rem;
+      color: #bbb;
+      background: #202020;
+    }
+    @media (max-width: 600px) {
+      main { padding: 0.5rem; }
+      #canvas-container { width: 100vw; border-radius: 0; }
+      canvas { width: 100vw !important; height: 55vw !important; }
+    }
+  </style>
+</head>
+<body>
+  <header>🎨 Random Art Generator</header>
+  <main>
+    <div id="canvas-container">
+      <canvas id="art-canvas" width="800" height="450"></canvas>
+    </div>
+    <div class="controls">
+      <select id="style-select">
+        <option value="abstract">Abstract</option>
+        <option value="bubbles">Bubbles</option>
+        <option value="waves">Waves</option>
+        <option value="triangles">Triangles</option>
+        <option value="lines">Lines</option>
+        <option value="stars">Stars</option>
+        <option value="spirals">Spirals</option>
+        <option value="pixels">Pixel Art</option>
+        <option value="grids">Grids</option>
+        <option value="noise">Hidden Optical</option>
+        <option value="splatter">Splatter</option>
+        <option value="mesh">Polygon Mesh</option>
+      </select>
+      <button id="generate-btn">Generate Art</button>
+      <button id="download-btn">Download</button>
+    </div>
+  </main>
+  <footer>
+    &copy; 2025 Random Art Generator &mdash; Made with <span style="color:#e25555;">&#10084;</span>
+  </footer>
+  <script>
+    const canvas = document.getElementById('art-canvas');
+    const ctx = canvas.getContext('2d');
+    const styleSelect = document.getElementById('style-select');
+    const generateBtn = document.getElementById('generate-btn');
+    const downloadBtn = document.getElementById('download-btn');
+
+    function rand(a, b) {
+      return Math.random() * (b - a) + a;
+    }
+    function randInt(a, b) {
+      return Math.floor(rand(a, b + 1));
+    }
+    function randColor(alpha=1) {
+      const h = randInt(0, 360);
+      const s = randInt(50, 100);
+      const l = randInt(30, 70);
+      return `hsla(${h},${s}%,${l}%,${alpha})`;
+    }
+    function clear() {
+      ctx.fillStyle = "#111";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    // Mario-style & retro pixel sprites (8x8 or 16x16)
+    // Each sprite is a 2D array of color codes or null for transparent
+    const sprites = [
+      // Mario-like
+      [
+        [null,null,"#E24F1B", "#E24F1B", "#E24F1B", "#E24F1B",null,null],
+        [null,"#E24F1B","#E24F1B","#E24F1B","#E24F1B","#E24F1B","#E24F1B",null],
+        [null,"#F8D898","#F8D898","#F8D898","#F8D898","#F8D898","#F8D898",null],
+        ["#E24F1B","#F8D898","#000","#F8D898","#F8D898","#000","#F8D898","#E24F1B"],
+        ["#F8D898","#F8D898","#F8D898","#F8D898","#F8D898","#F8D898","#F8D898","#F8D898"],
+        ["#0F380F","#0F380F","#0F380F","#0F380F","#0F380F","#0F380F","#0F380F","#0F380F"],
+        [null,"#2626D3","#2626D3","#2626D3","#2626D3","#2626D3","#2626D3",null],
+        [null,"#2626D3","#2626D3","#2626D3","#2626D3","#2626D3","#2626D3",null],
+      ],
+      // Mystery Block
+      [
+        [null,null,null,"#FFD800","#FFD800",null,null,null],
+        [null,null,"#FFD800","#FFF","#FFF","#FFD800",null,null],
+        [null,"#FFD800","#FFD800","#FFD800","#FFD800","#FFD800","#FFD800",null],
+        ["#FFD800","#FFF","#FFD800","#FFD800","#FFD800","#FFF","#FFD800"],
+        ["#FFD800","#FFD800","#FFD800","#FFF","#FFD800","#FFD800","#FFD800"],
+        [null,"#FFD800","#FFD800","#FFD800","#FFD800","#FFD800","#FFD800",null],
+        [null,null,"#FFD800","#FFD800","#FFD800","#FFD800",null,null],
+        [null,null,null,"#FFD800","#FFD800",null,null,null],
+      ],
+      // Goomba-like
+      [
+        [null,null,"#7B3F00","#7B3F00","#7B3F00","#7B3F00",null,null],
+        [null,"#7B3F00","#A0522D","#A0522D","#A0522D","#A0522D","#7B3F00",null],
+        ["#A0522D","#A0522D","#FFF","#A0522D","#A0522D","#FFF","#A0522D","#A0522D"],
+        ["#A0522D","#A0522D","#000","#A0522D","#A0522D","#000","#A0522D","#A0522D"],
+        ["#7B3F00","#A0522D","#A0522D","#A0522D","#A0522D","#A0522D","#A0522D","#7B3F00"],
+        [null,"#000",null,"#000","#000",null,"#000",null],
+        [null,"#000",null,"#000","#000",null,"#000",null],
+        [null,null,null,null,null,null,null,null],
+      ],
+      // Simple coin
+      [
+        [null,null,"#FFD700","#FFD700","#FFD700","#FFD700",null,null],
+        [null,"#FFD700","#FFF","#FFD700","#FFD700","#FFF","#FFD700",null],
+        ["#FFD700","#FFF","#FFD700","#FFD700","#FFD700","#FFD700","#FFF","#FFD700"],
+        ["#FFD700","#FFD700","#FFD700","#FFD700","#FFD700","#FFD700","#FFD700","#FFD700"],
+        ["#FFD700","#FFD700","#FFD700","#FFD700","#FFD700","#FFD700","#FFD700","#FFD700"],
+        ["#FFD700","#FFF","#FFD700","#FFD700","#FFD700","#FFD700","#FFF","#FFD700"],
+        [null,"#FFD700","#FFF","#FFD700","#FFD700","#FFF","#FFD700",null],
+        [null,null,"#FFD700","#FFD700","#FFD700","#FFD700",null,null],
+      ]
+    ];
+
+    // Abstract style
+    function drawAbstract() {
+      clear();
+      for(let i=0;i<70;i++) {
+        ctx.save();
+        ctx.globalAlpha = rand(0.2,0.7);
+        ctx.beginPath();
+        let x=rand(0,canvas.width), y=rand(0,canvas.height);
+        ctx.arc(x, y, rand(40,180), 0, Math.PI*2);
+        ctx.fillStyle = randColor();
+        ctx.shadowColor = randColor();
+        ctx.shadowBlur = rand(20,100);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+    // Bubbles
+    function drawBubbles() {
+      clear();
+      for(let i=0;i<120;i++) {
+        ctx.save();
+        ctx.beginPath();
+        let x=rand(0,canvas.width), y=rand(0,canvas.height), r=rand(8,70);
+        ctx.arc(x, y, r, 0, Math.PI*2);
+        ctx.fillStyle = randColor(rand(0.15,0.6));
+        ctx.shadowColor = "#fff";
+        ctx.shadowBlur = rand(10,30);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+    // Waves
+    function drawWaves() {
+      clear();
+      for(let j=0;j<7;j++) {
+        ctx.save();
+        ctx.beginPath();
+        let amp = rand(18,60), y0 = rand(j*60, (j+1)*65);
+        ctx.moveTo(0, y0);
+        for(let x=0;x<=canvas.width;x+=2) {
+          let y = y0 + Math.sin(x/30 + rand(0,3)) * amp * Math.sin(j + x/250);
+          ctx.lineTo(x, y);
+        }
+        ctx.lineTo(canvas.width, canvas.height);
+        ctx.lineTo(0, canvas.height);
+        ctx.closePath();
+        ctx.fillStyle = randColor(rand(0.2,0.6));
+        ctx.shadowBlur = 0;
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+    // Triangles
+    function drawTriangles() {
+      clear();
+      for(let i=0;i<60;i++) {
+        ctx.save();
+        ctx.beginPath();
+        let x1=rand(0,canvas.width), y1=rand(0,canvas.height),
+            x2=x1+rand(-80,80), y2=y1+rand(-80,80),
+            x3=x1+rand(-80,80), y3=y1+rand(-80,80);
+        ctx.moveTo(x1,y1);
+        ctx.lineTo(x2,y2);
+        ctx.lineTo(x3,y3);
+        ctx.closePath();
+        ctx.fillStyle = randColor(rand(0.3,0.9));
+        ctx.shadowColor = randColor();
+        ctx.shadowBlur = rand(10,40);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+    // Lines
+    function drawLines() {
+      clear();
+      for(let i=0;i<100;i++) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(rand(0,canvas.width), rand(0,canvas.height));
+        ctx.lineTo(rand(0,canvas.width), rand(0,canvas.height));
+        ctx.strokeStyle = randColor(rand(0.2,0.9));
+        ctx.lineWidth = rand(1, 8);
+        ctx.shadowColor = randColor();
+        ctx.shadowBlur = rand(8, 25);
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+    // Stars
+    function drawStars() {
+      clear();
+      for(let i=0;i<120;i++) {
+        ctx.save();
+        let x=rand(0,canvas.width), y=rand(0,canvas.height), r=rand(3,16);
+        ctx.translate(x, y);
+        ctx.rotate(rand(0, Math.PI*2));
+        ctx.beginPath();
+        for(let j=0;j<5;j++){
+          ctx.lineTo(0, r);
+          ctx.translate(0, r);
+          ctx.rotate((Math.PI*2)/10);
+          ctx.lineTo(0, -r);
+          ctx.translate(0, -r);
+          ctx.rotate(-((Math.PI*6)/10));
+        }
+        ctx.closePath();
+        ctx.fillStyle = randColor(rand(0.5,1));
+        ctx.shadowColor = "#fff";
+        ctx.shadowBlur = 12;
+        ctx.fill();
+        ctx.setTransform(1,0,0,1,0,0);
+        ctx.restore();
+      }
+    }
+    // Spirals
+    function drawSpirals() {
+      clear();
+      for(let i=0;i<15;i++) {
+        ctx.save();
+        ctx.beginPath();
+        let cx=rand(0,canvas.width), cy=rand(0,canvas.height);
+        let turns = rand(3,7), points = 160;
+        let maxr = rand(40,130);
+        let a = Math.random()<0.5?-1:1;
+        for(let t=0;t<points;t++) {
+          let th = t/points*turns*2*Math.PI*a;
+          let r = t/points*maxr;
+          ctx.lineTo(cx + Math.cos(th)*r, cy + Math.sin(th)*r);
+        }
+        ctx.strokeStyle = randColor(rand(0.4,1));
+        ctx.lineWidth = rand(2,7);
+        ctx.shadowColor = randColor();
+        ctx.shadowBlur = rand(8,20);
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+    // Pixel Art - Mario style
+    function drawPixels() {
+      clear();
+      const scale = 6; // Each "pixel" is scale x scale real px
+      const spriteSize = 8;
+      const nSprites = 12;
+      for(let i=0;i<nSprites;i++) {
+        // Randomly pick a sprite
+        let sprite = sprites[randInt(0,sprites.length-1)];
+        // Random position
+        let x = randInt(0, Math.floor(canvas.width/scale) - spriteSize);
+        let y = randInt(0, Math.floor(canvas.height/scale) - spriteSize);
+        // Optionally flip horizontally
+        let flip = Math.random() > 0.5;
+        for(let row=0;row<sprite.length;row++) {
+          for(let col=0;col<sprite[row].length;col++) {
+            let color = sprite[row][col];
+            if(color) {
+              ctx.fillStyle = color;
+              let dx = flip ? (sprite[row].length-1-col) : col;
+              ctx.fillRect((x+dx)*scale, (y+row)*scale, scale, scale);
+            }
+          }
+        }
+      }
+    }
+    // Grids
+    function drawGrids() {
+      clear();
+      let cols = randInt(5,15), rows = randInt(3,8);
+      let cellw = canvas.width/cols, cellh = canvas.height/rows;
+      for(let i=0;i<cols;i++) {
+        for(let j=0;j<rows;j++) {
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(i*cellw, j*cellh, cellw, cellh);
+          ctx.fillStyle = randColor(rand(0.2,1));
+          ctx.fill();
+          if(Math.random()>0.7) {
+            ctx.lineWidth = rand(2,7);
+            ctx.strokeStyle = randColor(rand(0.3,1));
+            ctx.stroke();
+          }
+          ctx.restore();
+        }
+      }
+    }
+    // Hidden Optical Noise with text embedded
+    function drawOptical() {
+      clear();
+      let img = ctx.createImageData(canvas.width, canvas.height);
+      // Generate grayscale noise
+      for(let i=0;i<img.data.length;i+=4) {
+        let v = randInt(80,190);
+        img.data[i] = v; // R
+        img.data[i+1] = v;
+        img.data[i+2] = v;
+        img.data[i+3] = 255;
+      }
+      ctx.putImageData(img,0,0);
+
+      // Overlay hidden text with a subtle contrast
+      let hiddenText = "SECRET";
+      ctx.save();
+      ctx.font = "bold 120px Arial Black, Arial, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      let gradient = ctx.createLinearGradient(0, 0, canvas.width, 0);
+      gradient.addColorStop(0, "rgba(255,255,255,0.11)");
+      gradient.addColorStop(1, "rgba(0,0,0,0.11)");
+      ctx.fillStyle = gradient;
+      ctx.globalAlpha = 0.85;
+      ctx.translate(canvas.width/2, canvas.height/2);
+      ctx.rotate(rand(-0.04, 0.04)); // small random slant
+      ctx.fillText(hiddenText, 0, 0);
+      ctx.restore();
+    }
+    // Splatter
+    function drawSplatter() {
+      clear();
+      for(let i=0;i<90;i++) {
+        ctx.save();
+        ctx.beginPath();
+        let x=rand(0,canvas.width), y=rand(0,canvas.height);
+        let r=rand(5,30);
+        ctx.arc(x, y, r, 0, Math.PI*2);
+        ctx.fillStyle = randColor(rand(0.3,1));
+        ctx.shadowColor = randColor();
+        ctx.shadowBlur = rand(12,32);
+        ctx.globalAlpha = rand(0.1,0.9);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+    // Polygon Mesh
+    function drawMesh() {
+      clear();
+      let points=[];
+      let n=randInt(15,30);
+      for(let i=0;i<n;i++) {
+        points.push({x:rand(0,canvas.width),y:rand(0,canvas.height)});
+      }
+      for(let i=0;i<n;i++) {
+        for(let j=i+1;j<n;j++) {
+          if(rand(0,1)<0.3) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(points[i].x, points[i].y);
+            ctx.lineTo(points[j].x, points[j].y);
+            ctx.strokeStyle = randColor(rand(0.2,0.8));
+            ctx.lineWidth = rand(1,4);
+            ctx.shadowColor = randColor();
+            ctx.shadowBlur = rand(0,10);
+            ctx.stroke();
+            ctx.restore();
+          }
+        }
+      }
+      for(let pt of points) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, rand(5,13), 0, Math.PI*2);
+        ctx.fillStyle = randColor(rand(0.6,1));
+        ctx.shadowColor = randColor();
+        ctx.shadowBlur = rand(3,19);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+
+    const styles = {
+      abstract: drawAbstract,
+      bubbles: drawBubbles,
+      waves: drawWaves,
+      triangles: drawTriangles,
+      lines: drawLines,
+      stars: drawStars,
+      spirals: drawSpirals,
+      pixels: drawPixels,
+      grids: drawGrids,
+      noise: drawOptical, // now hidden optical effect
+      splatter: drawSplatter,
+      mesh: drawMesh
+    };
+
+    function generate() {
+      styles[styleSelect.value]();
+    }
+
+    generateBtn.onclick = generate;
+    styleSelect.onchange = generate;
+    downloadBtn.onclick = function() {
+      const link = document.createElement('a');
+      link.download = 'random-art.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    };
+
+    // Initial
+    generate();
+  </script>
+</body>
+</html>
